@@ -7,4 +7,3 @@ extern crate tokio_timer;
 
 pub mod rng_actor;
 pub mod rng_handlers;
-pub mod rng_svc;

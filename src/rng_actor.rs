@@ -1,38 +1,33 @@
 use std::io;
 use actix::prelude::*;
+use xorshift::Rng;
 
-/// Define message
-struct Ping;
+struct NextU64;
 
-impl Message for Ping {
-    type Result = Result<bool, io::Error>;
+impl Message for NextU64 {
+    type Result = Result<u64, io::Error>;
 }
 
+struct RngActor<R: Rng>
+{
+    rng: R
+}
 
-// Define actor
-struct MyActor;
-
-// Provide Actor implementation for our actor
-impl Actor for MyActor {
+impl<R> Actor for RngActor<R>
+    where R: Rng + 'static
+{
     type Context = Context<Self>;
-
-    fn started(&mut self, _ctx: &mut Context<Self>) {
-        println!("Actor is alive");
-    }
-
-    fn stopped(&mut self, _ctx: &mut Context<Self>) {
-        println!("Actor is stopped");
-    }
 }
 
-/// Define handler for `Ping` message
-impl Handler<Ping> for MyActor {
-    type Result = Result<bool, io::Error>;
+impl<R> Handler<NextU64> for RngActor<R>
+    where R: Rng + 'static
+{
+    type Result = Result<u64, io::Error>;
 
-    fn handle(&mut self, _msg: Ping, _ctx: &mut Context<Self>) -> Self::Result {
-        println!("Ping received");
+    fn handle(&mut self, _msg: NextU64, _ctx: &mut Context<Self>) -> Self::Result {
+        println!("NextU64 received");
 
-        Ok(true)
+        Ok(self.rng.next_u64())
     }
 }
 
@@ -40,17 +35,19 @@ impl Handler<Ping> for MyActor {
 mod tests {
     use super::*;
     use futures::Future;
+    use xorshift::{Xoroshiro128, thread_rng};
 
     #[test]
     fn test_start_actor() {
         let sys = System::new("example");
 
         // Start MyActor in current thread
-        let addr = MyActor.start();
+        let rng: Xoroshiro128 = thread_rng();
+        let addr = RngActor { rng }.start();
 
         // Send Ping message.
         // send() message returns Future object, that resolves to message result
-        let result = addr.send(Ping);
+        let result = addr.send(NextU64);
 
         // spawn future to reactor
         Arbiter::spawn(
