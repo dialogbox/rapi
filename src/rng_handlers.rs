@@ -8,6 +8,8 @@ use std::cell::RefCell;
 use std::time;
 use tokio_timer::sleep;
 use xorshift::{Rng, Xoroshiro128};
+use rng_actor::*;
+use actix::Addr;
 
 pub struct RandHandler (pub RefCell<Xoroshiro128>);
 
@@ -35,5 +37,18 @@ impl<S> Handler<S> for SlowRandHandler {
         } else {
             ok(format!("{}", result)).responder()
         }
+    }
+}
+
+pub struct SerialRandHandler (pub Addr<RngActor<Xoroshiro128>>);
+
+impl<S> Handler<S> for SerialRandHandler {
+    type Result = FutureResponse<String>;
+
+    fn handle(&self, _req: &HttpRequest<S>) -> Self::Result {
+        self.0.send(NextU64)
+            .map(|r| format!("{}", r))
+            .map_err(|e| Error::from(e))
+            .responder()
     }
 }

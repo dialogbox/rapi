@@ -1,16 +1,15 @@
-use std::io;
 use actix::prelude::*;
 use xorshift::Rng;
 
-struct NextU64;
+pub struct NextU64;
 
 impl Message for NextU64 {
-    type Result = Result<u64, io::Error>;
+    type Result = u64;
 }
 
-struct RngActor<R: Rng>
+pub struct RngActor<R: Rng>
 {
-    rng: R
+    pub rng: R
 }
 
 impl<R> Actor for RngActor<R>
@@ -22,12 +21,10 @@ impl<R> Actor for RngActor<R>
 impl<R> Handler<NextU64> for RngActor<R>
     where R: Rng + 'static
 {
-    type Result = Result<u64, io::Error>;
+    type Result = u64;
 
     fn handle(&mut self, _msg: NextU64, _ctx: &mut Context<Self>) -> Self::Result {
-        println!("NextU64 received");
-
-        Ok(self.rng.next_u64())
+        self.rng.next_u64()
     }
 }
 
@@ -51,12 +48,10 @@ mod tests {
 
         // spawn future to reactor
         Arbiter::spawn(
-            result.map(|res| {
-                match res {
-                    Ok(result) => println!("Got result: {}", result),
-                    Err(err) => println!("Got error: {}", err),
-                }
-            })
+            result
+                .map(|res| {
+                    println!("Got result: {}", res)
+                })
                 .map_err(|e| {
                     println!("Actor is probably died: {}", e);
                 }));
