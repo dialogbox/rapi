@@ -1,19 +1,22 @@
+use actix::Addr;
 use actix_web::{AsyncResponder, dev::Handler, HttpRequest, Path};
-use actix_web::error::{Result, Error};
+use actix_web::error::{Error, Result};
 use actix_web::FromRequest;
 use actix_web::FutureResponse;
 use futures::Future;
 use futures::future::ok;
+use rng_actor::*;
 use std::cell::RefCell;
 use std::time;
 use tokio_timer::sleep;
-use xorshift::{Rng, Xoroshiro128};
-use rng_actor::*;
-use actix::Addr;
+use xorshift::Rng;
 
-pub struct RandHandler (pub RefCell<Xoroshiro128>);
+pub struct RandHandler<R>(pub RefCell<R>)
+    where R: Rng + 'static;
 
-impl<S> Handler<S> for RandHandler {
+impl<S, R> Handler<S> for RandHandler<R>
+    where R: Rng + 'static
+{
     type Result = Result<String>;
 
     fn handle(&self, _req: &HttpRequest<S>) -> Self::Result {
@@ -21,9 +24,12 @@ impl<S> Handler<S> for RandHandler {
     }
 }
 
-pub struct SlowRandHandler (pub RefCell<Xoroshiro128>);
+pub struct SlowRandHandler<R>(pub RefCell<R>)
+    where R: Rng + 'static;
 
-impl<S> Handler<S> for SlowRandHandler {
+impl<S, R> Handler<S> for SlowRandHandler<R>
+    where R: Rng + 'static
+{
     type Result = FutureResponse<String>;
 
     fn handle(&self, req: &HttpRequest<S>) -> Self::Result {
@@ -40,9 +46,12 @@ impl<S> Handler<S> for SlowRandHandler {
     }
 }
 
-pub struct SerialRandHandler (pub Addr<RngActor<Xoroshiro128>>);
+pub struct SerialRandHandler<R> (pub Addr<RngActor<R>>)
+    where R: Rng + 'static;
 
-impl<S> Handler<S> for SerialRandHandler {
+impl<S, R> Handler<S> for SerialRandHandler<R>
+    where R: Rng + 'static
+{
     type Result = FutureResponse<String>;
 
     fn handle(&self, _req: &HttpRequest<S>) -> Self::Result {

@@ -10,7 +10,7 @@ use actix_web::{App, server};
 use rapi::rng_actor::RngActor;
 use rapi::rng_handlers::*;
 use std::cell::RefCell;
-use xorshift::{thread_rng, Xoroshiro128};
+use xorshift::{thread_rng, Xoroshiro128, Xorshift1024};
 
 fn main() {
     let matches = clap::App::new("RNG Api Server")
@@ -38,14 +38,24 @@ fn main() {
 
     server::new(
         || App::new()
-            .resource("/rand", |r| r.h(RandHandler(RefCell::new(thread_rng()))))
-            .resource("/srand", |r| {
-                let rng: Xoroshiro128 = thread_rng();
-                let addr = RngActor { rng }.start();
-
-                r.h(SerialRandHandler(addr))
+            .resource("/rand", |r| {
+                r.h(RandHandler(RefCell::new(thread_rng::<Xoroshiro128>())))
             })
-            .resource("/rand/{sleep}", |r| r.h(SlowRandHandler(RefCell::new(thread_rng())))))
+            .resource("/rand1024", |r| {
+                r.h(RandHandler(RefCell::new(thread_rng::<Xorshift1024>())))
+            })
+            .resource("/srand", |r| {
+                r.h(SerialRandHandler(RngActor { rng: thread_rng::<Xoroshiro128>() }.start()))
+            })
+            .resource("/srand1024", |r| {
+                r.h(SerialRandHandler(RngActor { rng: thread_rng::<Xorshift1024>() }.start()))
+            })
+            .resource("/rand/{sleep}", |r| {
+                r.h(SlowRandHandler(RefCell::new(thread_rng::<Xoroshiro128>())))
+            })
+            .resource("/rand1024/{sleep}", |r| {
+                r.h(SlowRandHandler(RefCell::new(thread_rng::<Xorshift1024>())))
+            }))
         .workers(workers)
         .bind(bind)
         .unwrap()
